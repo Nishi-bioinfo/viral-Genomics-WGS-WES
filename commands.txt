@@ -1,0 +1,39 @@
+    1  mkdir Raw_Data QC_Reports Alignment Variant_Calling Reference
+    2  sudo apt update
+    3  cd ./Raw_Data/
+    4  wget -nc ftp://ftp.sra.ebi.ac.uk/vol1/fastq/ERR574/003/ERR5743893/ERR5743893_1.fastq.gz
+    5  wget -nc ftp://ftp.sra.ebi.ac.uk/vol1/fastq/ERR574/003/ERR5743893/ERR5743893_2.fastq.gz
+    6  sudo apt install fastqc
+    7  mkdir Raw_Data QC_Reports Alignment Variant_Calling Reference
+    8  sudo apt update
+    9  cd ./Raw_Data/
+   10  wget -nc ftp://ftp.sra.ebi.ac.uk/vol1/fastq/ERR574/003/ERR5743893/ERR5743893_1.fastq.gz
+   11  wget -nc ftp://ftp.sra.ebi.ac.uk/vol1/fastq/ERR574/003/ERR5743893/ERR5743893_2.fastq.gz
+   12  sudo apt install fastqc
+   13  fastqc ERR5743893_1.fastq.gz --outdir ../QC_Reports
+   14  fastqc ERR5743893_2.fastq.gz --outdir ../QC_Reports
+   15  gunzip ERR5743893_1.fastq.gz
+   16  gunzip ERR5743893_2.fastq.gz
+   17  cd ..
+   18  wget "https://www.ebi.ac.uk/ena/browser/api/fasta/MN908947.3?download=true" -O MN908947.fasta
+   19  cd Reference
+   20  wget "https://www.ebi.ac.uk/ena/browser/api/fasta/MN908947.3?download=true" -O MN908947.fasta
+   21  sudo apt install bwa
+   22  sudo apt install samtools
+   23  sudo apt install bamtools
+   24  sudo apt install bcftools
+   25  sudo apt install vcftools
+   26  sudo apt install freebayes
+   27  bwa index MN908947.fasta
+   28  samtools faidx MN908947.fasta
+   29  cd ..
+   30  bwa mem Reference/MN908947.fasta Raw_Data/ERR5743893_1.fastq Raw_Data/ERR5743893_2.fastq > Alignment/ERR5743893.sam
+   31  samtools view -@ 20 -S -b Alignment/ERR5743893.sam > Alignment/ERR5743893.bam
+   32  samtools sort -@ 4 -o Alignment/ERR5743893.sorted.bam Alignment/ERR5743893.bam
+   33  samtools index Alignment/ERR5743893.sorted.bam
+   34  cat ./MN908947.fasta
+   35  head -n 5 MN908947.fasta
+   36  freebayes -f Reference/MN908947.fasta Alignment/ERR5743893.sorted.bam > Variant_Calling/ERR5743893.vcf
+   37  conda install -c bioconda freebayes
+   38  freebayes -f Reference/MN908947.fasta Alignment/ERR5743893.sorted.bam > Variant_Calling/ERR5743893.vcf
+   39  history > commands.txt

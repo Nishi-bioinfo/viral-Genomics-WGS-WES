@@ -1,0 +1,9 @@
+# Large genomic data files
+*.sam
+*.bam
+*.fastq
+*.fq
+
+# Temporary files
+*.tmp
+*.temp
