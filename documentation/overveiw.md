@@ -28,7 +28,7 @@ This repository contains a small example pipeline and project layout for perform
 Quicknote: the example `commands.txt` uses both `apt` and `conda` lines; prefer one package manager for a reproducible environment.
 
 **Quickstart (example commands)**
-The commands below were executed to produce the example outputs and are taken from `commands.txt`. Run them from the repository root (adjust thread counts and paths to your environment):
+The commands below were executed to produce the example outputs and are taken from `commands.txt`.
 
 ```bash
 # Create folders
