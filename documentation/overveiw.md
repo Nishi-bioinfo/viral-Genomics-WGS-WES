@@ -1,107 +1,223 @@
-# viral-Genomics-WGS-WES
+## NGS Variant Calling Pipeline — Overview
 
-WGS sequences the entire viral genome to identify mutations, track variants, and understand viral evolution. It provides a complete view of the virus for surveillance, outbreak investigation, and vaccine/drug development. WES focuses on protein-coding regions to detect changes that may affect viral infectivity, immune escape, or drug resistance.
+*Project Documentation*
+
+This project implements a Next‑Generation Sequencing (NGS) analysis pipeline for variant detection from paired‑end FASTQ reads. The workflow includes quality control, reference genome preparation, read alignment, BAM processing, and variant calling using standard bioinformatics tools.
+*Purpose:* Reproducible SARS‑CoV‑2 WGS pipeline for a single paired‑end sample (ERR5743893). This document lists the commands used, short descriptions, prerequisites, expected outputs, and notes for reproducibility.
+
+# Analysis Goals
+
+1. Evaluate raw read quality
+
+- Tool: FastQC
+
+2. Quantify alignment coverage and mapping rates
+
+- Tools: BWA, SAMtools
+
+3. Discover single nucleotide polymorphisms (SNPs) and insertions/deletions (indels)
+
+- Relative to the reference genome
+
+- Tool: FreeBayes
+
+# Pipeline Workflow Summary
+
+Raw FASTQ → Quality Control → Read Alignment → BAM Processing → Variant Calling → VCF Output
+
+# Key Metrics Generated
+
+FastQC reports:
+Per-base quality scores, adapter content, duplication levels
+
+Alignment statistics:
+Mapping rate, coverage depth across the ~30 kb genome
+
+Variant file:
+High-confidence SNPs/indels with quality scores and allele frequencies
+
+# Learning Objectives
+
+This project demonstrates a standard viral genomics workflow applicable to:
+
+- Surveillance
+
+- Outbreak investigation
+
+- Lineage tracking
+
+# Skills gained include:
+
+- Linux command-line bioinformatics
+
+- Reference-based genome assembly
+
+- Population variant calling core competencies
+
+## Prerequisites
+- OS: Linux (Ubuntu or similar).
+- Disk: allow ~5–10 GB for reference, FASTQ, and intermediates for this example.
+- Tools: fastqc, bwa, samtools, bamtools, bcftools, vcftools, freebayes, wget, (or install freebayes via conda -c bioconda).
 
 
-This repository contains a small example pipeline and project layout for performing viral whole-genome (WGS) / whole-exome (WES) short-read analysis: download raw reads, run QC, align to a reference, and call variants. The sample dataset used in this repository is `ERR5743893` and the reference is `MN908947` (SARS-CoV-2).
+## 🧪 Sample & Reference Information
 
-**Goals**
-- Provide an auditable set of commands (see `commands.txt`) used to produce the processed files in this repo.
-- Show a minimal folder layout for alignment, QC reports and variant calls.
-- Offer reproducibility guidance (packages and an example `conda` environment).
+| *Parameter* | *Description* |
+|---|---|
+| *Sample ID* | ERR5743893 |
+| *Sequencing Type* | Paired‑end |
+| *Data Source* | ENA (European Nucleotide Archive) |
+| *Reference Genome* | SARS‑CoV‑2 (MN908947.3) |
 
-**Important:** This repo stores example outputs (BAM, VCF, QC HTML). If you plan to re-run the pipeline, follow the commands in `commands.txt` and the `Quickstart` below.
+## 🛠 Software Requirements
 
-**Repository Structure**
-- `Raw_Data/`: Raw input FASTQ files (example: `ERR5743893_1.fastq.gz`, `ERR5743893_2.fastq.gz`).
-- `QC_Reports/`: FastQC HTML reports (example: `ERR5743893_1_fastqc.html`).
-- `Alignment/`: Alignment outputs (SAM/BAM/BAI). Example: `ERR5743893.sorted.bam`, `ERR5743893.sorted.bam.bai`.
-- `Reference/`: Reference FASTA and index files (example: `MN908947.fasta` and its index files).
-- `Variant_Calling/`: Variant call files (VCF), e.g. `ERR5743893.vcf`.
-- `commands.txt`: The shell command history used to generate the files in this repository (canonical commands are copied below).
+| *Tool* | *Purpose* |
+|---|---|
+| *FastQC* | Raw read quality control |
+| *BWA* | Sequence alignment |
+| *SAMtools* | SAM/BAM file processing |
+| *BAMtools* | BAM file utilities |
+| *VCFtools* | Variant file analysis |
+| *BCFtools* | Variant file manipulation |
+| *FreeBayes* | Variant calling |
+| *Conda* | Package management (recommended for freebayes) |
 
-**Prerequisites**
-- Operating system: Linux (commands shown use bash).
-- Tools used (examples): `wget`, `fastqc`, `bwa`, `samtools`, `freebayes` (or other variant callers), `bcftools`.
-- Preferred install method: `conda` (Bioconda) or system packages (apt for quick installs). Using conda is recommended to pin versions and avoid permission issues.
+## 📁 Directory Structure
 
-Quicknote: the example `commands.txt` uses both `apt` and `conda` lines; prefer one package manager for a reproducible environment.
 
-**Quickstart (example commands)**
-The commands below were executed to produce the example outputs and are taken from `commands.txt`.
+.
+├── Raw_Data/
+│   ├── ERR5743893_1.fastq
+│   └── ERR5743893_2.fastq
+│
+├── Output/
+│   ├── fastq/
+│   ├── sam/
+│   ├── bam/
+│   ├── vcf/
+│   └── reference/
+│
+└── README.md
 
-```bash
-# Create folders
-mkdir -p Raw_Data QC_Reports Alignment Variant_Calling Reference
 
-# Download example reads
+## ⚙ Pipeline Overview (step-by-step)
+
+Below are the commands used in the pipeline with short explanations.
+
+*Step 1: Create Project Directories*
+
+bash
+mkdir -p Raw_Data Output/{fastq,sam,bam,vcf,reference}
+
+
+Organizes raw data and analysis outputs.
+
+*Step 2: Install Required Tools*
+
+bash
+sudo apt update
+sudo apt install fastqc bwa samtools bamtools vcftools bcftools
+conda install -c bioconda freebayes
+
+
+Installs bioinformatics dependencies (use conda/bioconda for freebayes where preferred).
+
+*Step 3: Download Raw FASTQ Files*
+
+bash
 cd Raw_Data
 wget -nc ftp://ftp.sra.ebi.ac.uk/vol1/fastq/ERR574/003/ERR5743893/ERR5743893_1.fastq.gz
 wget -nc ftp://ftp.sra.ebi.ac.uk/vol1/fastq/ERR574/003/ERR5743893/ERR5743893_2.fastq.gz
 
-# Run FastQC (outputs to ../QC_Reports)
-fastqc ERR5743893_1.fastq.gz --outdir ../QC_Reports
-fastqc ERR5743893_2.fastq.gz --outdir ../QC_Reports
 
-# (optional) decompress if your pipeline needs uncompressed FASTQ
+*Step 4: Quality Control of Raw Reads*
+
+bash
+cp ERR5743893_1.fastq.gz ../Output/fastq/
+cp ERR5743893_2.fastq.gz ../Output/fastq/
+
+fastqc ERR5743893_1.fastq.gz --outdir ../Output/fastq/
+fastqc ERR5743893_2.fastq.gz --outdir ../Output/fastq/
+
+
+Generates FastQC reports to assess sequencing quality.
+
+*Step 5: Decompress FASTQ Files*
+
+bash
 gunzip ERR5743893_1.fastq.gz
 gunzip ERR5743893_2.fastq.gz
 cd ..
 
-# Download reference (MN908947) into Reference/
-wget "https://www.ebi.ac.uk/ena/browser/api/fasta/MN908947.3?download=true" -O Reference/MN908947.fasta
 
-# Index reference
-bwa index Reference/MN908947.fasta
-samtools faidx Reference/MN908947.fasta
+Prepares FASTQ files for alignment.
 
-# Align reads, convert, sort and index
-bwa mem Reference/MN908947.fasta Raw_Data/ERR5743893_1.fastq Raw_Data/ERR5743893_2.fastq > Alignment/ERR5743893.sam
-samtools view -@ 20 -S -b Alignment/ERR5743893.sam > Alignment/ERR5743893.bam
-samtools sort -@ 4 -o Alignment/ERR5743893.sorted.bam Alignment/ERR5743893.bam
-samtools index Alignment/ERR5743893.sorted.bam
+*Step 6: Download & Index Reference Genome*
 
-# Call variants with freebayes (example)
-freebayes -f Reference/MN908947.fasta Alignment/ERR5743893.sorted.bam > Variant_Calling/ERR5743893.vcf
-```
+bash
+wget "https://www.ebi.ac.uk/ena/browser/api/fasta/MN908947.3?download=true" -O Output/reference/MN908947.fasta
 
-**Reproducibility / Suggested conda environment**
-Create an isolated environment with pinned versions (example):
+bwa index Output/reference/MN908947.fasta
+samtools faidx Output/reference/MN908947.fasta
 
-```yaml
-name: viral-wgs-env
-channels:
-  - conda-forge
-  - bioconda
-  - defaults
-dependencies:
-  - python=3.11
-  - bwa=0.7.17
-  - samtools=1.17
-  - fastqc=0.11.9
-  - freebayes=1.3.5
-  - bcftools=1.17
-  - wget
-  - gzip
-```
 
-Create and activate:
-```bash
-conda env create -f environment.yml   # or `conda create -n viral-wgs-env ...`
-conda activate viral-wgs-env
-```
+Indexes the reference genome for alignment and variant calling.
 
-**Notes & suggestions**
-- Choose a variant caller appropriate for viral data and low-frequency variants (FreeBayes, LoFreq, iVar, etc.).
-- For paired-end trimming and filtering consider `fastp` or `trimmomatic` before alignment.
-- When working with many samples, wrap this workflow in a workflow manager (Snakemake, Nextflow) and add containerization (Docker/Singularity) for portability.
+*Step 7: Read Alignment (BWA‑MEM)*
 
-**Results in this repo**
-- `Alignment/ERR5743893.sorted.bam` — mapped reads aligned to `MN908947.fasta`.
-- `QC_Reports/ERR5743893_1_fastqc.html` — example FastQC report.
-- `Variant_Calling/ERR5743893.vcf` — example variant calls produced by `freebayes`.
+bash
+bwa mem Output/reference/MN908947.fasta \
+	Raw_Data/ERR5743893_1.fastq \
+	Raw_Data/ERR5743893_2.fastq > Output/sam/ERR5743893.sam
 
-**License**
-- No license is included. 
 
----
+Aligns sequencing reads to the reference genome.
+
+*Step 8: Convert, Sort & Index BAM File*
+
+bash
+samtools view -@ 4 -Sb Output/sam/ERR5743893.sam > Output/bam/ERR5743893.bam
+samtools sort -@ 4 -o Output/bam/ERR5743893.sorted.bam Output/bam/ERR5743893.bam
+samtools index Output/bam/ERR5743893.sorted.bam
+
+
+Produces a sorted and indexed BAM file.
+
+*Step 9: Variant Calling (FreeBayes)*
+
+bash
+freebayes -f Output/reference/MN908947.fasta Output/bam/ERR5743893.sorted.bam > Output/vcf/ERR5743893.vcf
+
+
+Detects SNPs and small indels, producing a VCF file.
+
+*Step 10: Save Command History*
+
+bash
+history > Output/commands_used.txt
+
+
+Ensures pipeline reproducibility.
+
+## 📊 Final Output Files
+
+| *File* | *Description* |
+|---|---|
+| ERR5743893.sorted.bam | Sorted alignment file |
+| ERR5743893.sorted.bam.bai | BAM index |
+| ERR5743893.vcf | Variant call file |
+| *_fastqc.html | Quality control reports |
+| commands_used.txt | Executed commands log |
+
+## Notes & troubleshooting
+- Keep gzipped original FASTQ copies in Output/fastq as canonical raw data.
+- Use -@ N or -t N flags for samtools/bwa to use multiple CPU threads.
+- If VCF contains many low‑quality calls, filter using bcftools filter or vcffilter (e.g., QUAL > 20 and min depth).
+- For amplicon or tiled primer data, trim primers (e.g., ivar) before variant calling.
+- To generate a consensus sequence: filter VCF for high‑confidence variants and apply bcftools consensus.
+
+
+
+## ✅ Summary
+
+This pipeline represents a standard viral genome variant‑calling workflow using open‑source bioinformatics tools. It is suitable for research, teaching, and reproducible genomics analyses. To scale or productionize, consider wrapping this into a workflow manager (Snakemake/Nextflow) and containerizing the environment (Docker/Singularity).
